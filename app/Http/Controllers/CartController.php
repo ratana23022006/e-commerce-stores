@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class CartController extends Controller
 {
@@ -19,12 +20,17 @@ class CartController extends Controller
 
     public function store(Request $req)
     {
-        $data = $req->validate([
-            'user_id' => 'required|exists:users,id',
+        $validator = Validator::make($req->all(), [
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
         ]);
 
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
+        $data['user_id'] = $req->user()->id;
         $cart = Cart::create($data);
 
         return apiResponse($cart, 201, 'Add cart successfully...');
@@ -33,12 +39,17 @@ class CartController extends Controller
     public function update(Request $req, $id)
     {
         $cart = Cart::findOrFail($id);
-        $data = $req->validate([
+        $validator = Validator::make($req->all(), [
             'user_id' => 'sometimes|required|exists:users,id',
             'product_id' => 'sometimes|required|exists:products,id',
             'quantity' => 'sometimes|required|integer|min:1',
         ]);
 
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
         $cart->update($data);
 
         return apiResponse($cart, 200, 'Update cart successfully...');

@@ -8,48 +8,66 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
-Route::get('/',function(){
-    return response()->json([
-        'msg'=>"I miss youu..."
-    ]);
-});
-Route::controller(UserController::class)->group(function(){
-    Route::post('/register','register');
-    Route::post('/login','login');
-    
+// Health Check
+Route::get('/', function () {
+    return response()->json(['msg' => 'API is running.']);
 });
 
-Route::post('/addProduct', [ProductController::class, 'addProduct']);
+// ─────────────────────────────────────────────
+// Public Routes (No Auth Required)
+// ─────────────────────────────────────────────
+Route::post('/register', [UserController::class, 'register']);
+Route::post('/login', [UserController::class, 'login']);
 
-Route::apiResource('categories', CategoryController::class);
-Route::apiResource('products', ProductController::class);
-Route::apiResource('orders', OrderController::class);
-Route::apiResource('order-items', OrderItemController::class);
-Route::apiResource('payments', PaymentController::class);
-Route::apiResource('reviews', ReviewController::class);
-Route::apiResource('carts', CartController::class);
+// Public read-only
+Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
+Route::apiResource('products', ProductController::class)->only(['index', 'show']);
+Route::apiResource('reviews', ReviewController::class)->only(['index', 'show']);
 
-Route::middleware(['auth:sanctum','admin'])->group(function(){
-    Route::controller(UserController::class)->group(function(){
-        Route::get('/user','getUser');
-        Route::get('/user/{id}','getUserById');
-    });
+// ─────────────────────────────────────────────
+// Authenticated Routes (Any logged-in user)
+// ─────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
 
-    // Route::controller(ProductController::class)->group(function(){
-    //     Route::post('/addProduct','addProduct');
-    // });
+    // Cart
+    Route::apiResource('carts', CartController::class);
+
+    // Orders
+    Route::apiResource('orders', OrderController::class);
+
+    // Order Items
+    Route::apiResource('order-items', OrderItemController::class);
+
+    // Payments
+    Route::apiResource('payments', PaymentController::class);
+
+    // Reviews (create, update, delete — own reviews)
+    Route::apiResource('reviews', ReviewController::class)->except(['index', 'show']);
+
+    // Current logged-in user profile
+    Route::get('/profile', [UserController::class, 'getUser']);
+});
+
+// ─────────────────────────────────────────────
+// Admin Routes (auth + admin middleware)
+// ─────────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+
+    // Manage Categories (create, update, delete)
+    Route::apiResource('categories', CategoryController::class)->except(['index', 'show']);
+
+    // Manage Products (create, update, delete)
+    Route::apiResource('products', ProductController::class)->except(['index', 'show']);
+
+    // User Management
+    Route::get('/users', [UserController::class, 'getUser']);
+    Route::get('/users/{id}', [UserController::class, 'getUserById']);
 });

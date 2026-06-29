@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
@@ -23,12 +24,17 @@ class OrderController extends Controller
 
     public function store(Request $req)
     {
-        $data = $req->validate([
+        $validator = Validator::make($req->all(), [
             'user_id' => 'required|exists:users,id',
             'total_price' => 'required|numeric',
             'status' => 'nullable|string',
         ]);
 
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
         $order = Order::create($data);
 
         return apiResponse($order, 201, 'Add order successfully...');
@@ -37,12 +43,17 @@ class OrderController extends Controller
     public function update(Request $req, $id)
     {
         $order = Order::findOrFail($id);
-        $data = $req->validate([
+        $validator = Validator::make($req->all(), [
             'user_id' => 'sometimes|required|exists:users,id',
             'total_price' => 'sometimes|required|numeric',
             'status' => 'sometimes|required|string',
         ]);
 
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
         $order->update($data);
 
         return apiResponse($order, 200, 'Update order successfully...');

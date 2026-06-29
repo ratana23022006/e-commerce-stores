@@ -6,28 +6,50 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
     public function register(Request $req){
-        $data=$req->validate([
-            'name'=>'required',
-            'email'=>'required|email',
-            'password'=>'required|min:6',
+        $validator = Validator::make($req->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
 
         ]);
+
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
         $data['password']=Hash::make($data['password']);
-        User::create($data);
-        return apiResponse($data,200,"register successfully");
+        $user = User::create($data);
+        $user->token = $user->createToken('authToken')->plainTextToken;
+
+        return apiResponse($user,201,"Register successfully.");
     }
 
     public function login(Request $req){
-        $data['email']=$req->email;
-        $data['password']=$req->password;
-        if(Auth::attempt(['email'=>$data['email'],'password'=>$data['password']])){
-            $data['token']=Auth::user()->createToken('authToken')->plainTextToken;
-            return apiResponse($data,200,'Login Successfully...!');
+        $validator = Validator::make($req->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
         }
+
+        $credentials = $validator->validated();
+
+        if (!Auth::attempt($credentials)) {
+            return apiResponse(null, 401, 'Invalid email or password.');
+        }
+
+        $user = Auth::user();
+        $user->token = $user->createToken('authToken')->plainTextToken;
+
+        return apiResponse($user,200,'Login successfully.');
     }
 
     public function getUser(){

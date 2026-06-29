@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Review;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ReviewController extends Controller
 {
@@ -19,13 +20,18 @@ class ReviewController extends Controller
 
     public function store(Request $req)
     {
-        $data = $req->validate([
+        $validator = Validator::make($req->all(), [
             'user_id' => 'required|exists:users,id',
             'product_id' => 'required|exists:products,id',
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string',
         ]);
 
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
         $review = Review::create($data);
 
         return apiResponse($review, 201, 'Add review successfully...');
@@ -34,13 +40,18 @@ class ReviewController extends Controller
     public function update(Request $req, $id)
     {
         $review = Review::findOrFail($id);
-        $data = $req->validate([
+        $validator = Validator::make($req->all(), [
             'user_id' => 'sometimes|required|exists:users,id',
             'product_id' => 'sometimes|required|exists:products,id',
             'rating' => 'sometimes|required|integer|min:1|max:5',
             'comment' => 'nullable|string',
         ]);
 
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
         $review->update($data);
 
         return apiResponse($review, 200, 'Update review successfully...');

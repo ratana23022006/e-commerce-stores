@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
 {
@@ -19,13 +20,18 @@ class PaymentController extends Controller
 
     public function store(Request $req)
     {
-        $data = $req->validate([
+        $validator = Validator::make($req->all(), [
             'order_id' => 'required|exists:orders,id',
             'payment_method' => 'required|string',
             'payment_status' => 'nullable|string',
             'transaction_id' => 'nullable|string',
         ]);
 
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
         $payment = Payment::create($data);
 
         return apiResponse($payment, 201, 'Add payment successfully...');
@@ -34,13 +40,18 @@ class PaymentController extends Controller
     public function update(Request $req, $id)
     {
         $payment = Payment::findOrFail($id);
-        $data = $req->validate([
+        $validator = Validator::make($req->all(), [
             'order_id' => 'sometimes|required|exists:orders,id',
             'payment_method' => 'sometimes|required|string',
             'payment_status' => 'sometimes|required|string',
             'transaction_id' => 'nullable|string',
         ]);
 
+        if ($validator->fails()) {
+            return apiResponse($validator->errors(), 422, 'Validation failed.');
+        }
+
+        $data = $validator->validated();
         $payment->update($data);
 
         return apiResponse($payment, 200, 'Update payment successfully...');
